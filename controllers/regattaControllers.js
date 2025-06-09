@@ -3,6 +3,7 @@ const Regatta = require('../models/Regatta');
 
 exports.createRegatta = async (req, res) => {
     const { name } = req.body;
+    //const { name, obstacles = [], buoys = [] } = req.body;
     const ownerId = req.userId;
     if (!name) {
         return res.status(400).json({ message: "El nombre de la regata es obligatorio." });
@@ -10,9 +11,11 @@ exports.createRegatta = async (req, res) => {
     try {
         const newRegatta = await Regatta.create({
             owner: ownerId,
-            name: name,
-            isLive: true, 
+            name,
+            isLive: false, 
             participants: [ownerId],
+            obstacles: [],
+            // buoys,
             createdAt: new Date()
         });
         res.status(201).json(newRegatta);
@@ -22,9 +25,45 @@ exports.createRegatta = async (req, res) => {
     }
 };
 
+
+exports.startRegatta = async (req, res) => {
+    const { regattaId } = req.params;
+    const { obstacles }  = req.body;
+    if (!mongoose.Types.ObjectId.isValid(regattaId)) {
+        return res.status(400).json({ message: "ID inválido." });
+    }
+    try {
+        const updated = await Regatta.findByIdAndUpdate(
+        regattaId,
+            { isLive: true, obstacles },
+            { new: true }
+        );
+        if (!updated) return res.status(404).json({ message: "Regata no encontrada." });
+        res.json(updated);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ message: "Error al arrancar la regata.", error: e.message });
+    }
+};
+
+
+exports.stopRegatta = async (req, res) => {
+    const { regattaId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(regattaId)) {
+        return res.status(400).json({ message: "ID inválido." });
+    }
+    try {
+        await Regatta.findByIdAndUpdate(regattaId, { isLive: false });
+        res.json({ message: "Regata detenida" });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ message: "Error al detener la regata.", error: e.message });
+    }
+};
+
 exports.listRegattas = async (req, res) => {
     try {
-        const regs = await Regatta.find({ owner: req.userId })
+        const regs = await Regatta.find({ isLive: false })
                                     .populate('owner', 'username email')
                                     .populate('participants', 'username') 
                                     .sort({ createdAt: -1 });
@@ -39,8 +78,9 @@ exports.listActiveRegattas = async (req, res) => {
     try {
         const activeRegattas = await Regatta.find({ isLive: true })
                                             .populate('owner', 'username')
-                                            .populate('participants', 'username')
-                                            .sort({ createdAt: -1 });
+                                            //.populate('participants', 'username')
+                                            .sort({ createdAt: -1 })
+                                            .lean();
         res.status(200).json(activeRegattas);
     } catch (e) {
         console.error("Error listing active regattas:", e);
@@ -71,3 +111,4 @@ exports.joinRegatta = async (req, res) => {
         res.status(500).json({ message: "Error interno al unirse a la regata.", error: e.message });
     }
 };
+
