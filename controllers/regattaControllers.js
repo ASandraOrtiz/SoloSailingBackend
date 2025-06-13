@@ -15,7 +15,6 @@ exports.createRegatta = async (req, res) => {
             isLive: false, 
             participants: [ownerId],
             obstacles: [],
-            // buoys,
             createdAt: new Date()
         });
         res.status(201).json(newRegatta);
@@ -23,6 +22,25 @@ exports.createRegatta = async (req, res) => {
         console.error("Error creating regatta:", e);
         res.status(500).json({ message: "Error interno al crear la regata.", error: e.message });
     }
+};
+exports.getRegattaById = async (req, res) => {
+  const { regattaId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(regattaId)) {
+    return res.status(400).json({ message: "ID inválido." });
+  }
+  try {
+    const regatta = await Regatta.findById(regattaId)
+      .populate('owner', 'username')
+      .populate('participants', 'username')
+      .lean();
+    if (!regatta) {
+      return res.status(404).json({ message: "Regata no encontrada." });
+    }
+    res.status(200).json(regatta);
+  } catch (e) {
+    console.error("Error fetching regatta:", e);
+    res.status(500).json({ message: "Error interno al obtener la regata.", error: e.message });
+  }
 };
 
 
@@ -78,7 +96,7 @@ exports.listActiveRegattas = async (req, res) => {
     try {
         const activeRegattas = await Regatta.find({ isLive: true })
                                             .populate('owner', 'username')
-                                            //.populate('participants', 'username')
+                                            .populate('participants', 'username')
                                             .sort({ createdAt: -1 })
                                             .lean();
         res.status(200).json(activeRegattas);
