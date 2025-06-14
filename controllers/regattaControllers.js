@@ -2,7 +2,7 @@
 const Regatta = require('../models/Regatta');
 
 exports.createRegatta = async (req, res) => {
-    const { name } = req.body;
+    const { name, obstacles = [] } = req.body;
     //const { name, obstacles = [], buoys = [] } = req.body;
     const ownerId = req.userId;
     if (!name) {
@@ -14,7 +14,7 @@ exports.createRegatta = async (req, res) => {
             name,
             isLive: false, 
             participants: [ownerId],
-            obstacles: [],
+            obstacles,
             createdAt: new Date()
         });
         res.status(201).json(newRegatta);
